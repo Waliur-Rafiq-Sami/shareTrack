@@ -1,0 +1,32 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+
+export const config = {
+  matcher: ["/dashboard/:path*", "/sign-in", "/sign-up", "/", "/verify/:path*"],
+};
+
+export async function proxy(request: NextRequest) {
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+
+  const url = request.nextUrl;
+
+  // If user is authenticated, redirect away from auth pages
+  if (
+    token &&
+    (url.pathname.startsWith("/sign-in") ||
+      url.pathname.startsWith("/sign-up") ||
+      url.pathname === "/")
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // If no token and trying to access dashboard, redirect to sign-in
+  if (!token && url.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/sign-in", request.url));
+  }
+
+  return NextResponse.next();
+}
